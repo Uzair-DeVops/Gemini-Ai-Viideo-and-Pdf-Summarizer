@@ -101,37 +101,52 @@ with st.sidebar:
 
 # Process user query for PDF or Video
 if file_type == "PDF":
-    user_query = st.text_input("Ask a Question about the uploaded content")
-    if user_query:
-        with st.spinner("Processing your PDF query..."):
-            response = user_input(user_query)
-            st.success("Query processed successfully!")
-            st.write("Reply:", response)
+    # Ensure the PDF is uploaded before asking a question
+    if not pdf_docs:
+        st.warning("Please upload a PDF first before asking any questions.")
+    else:
+        user_query = st.text_input("Ask a Question about the uploaded content")
+        if user_query:
+            with st.spinner("Processing your PDF query..."):
+                response = user_input(user_query)
+                st.success("Query processed successfully!")
+                st.write("Reply:", response)
+# Process user query for Video
+if file_type == "Video":
+    # Ensure the video is uploaded before asking a question
+    if not video_file:
+        st.warning("Please upload a video first before asking any questions.")
+    else:
+        with st.form(key='video_form'):
+            # Text area for user query about the video
+            user_query_video = st.text_area("What insights are you seeking from the video?")
 
-elif file_type == "Video":
-    # Only show the video summarizer input for video files
-    user_query_video = st.text_area("What insights are you seeking from the video?")
-    if st.button("🔍 Analyze Video"):
-        if not user_query_video:
-            st.warning("Please enter a question or insight to analyze the video.")
-        else:
-            try:
-                with st.spinner("Processing video and gathering insights..."):
-                    processed_video = upload_file(video_path)
-                    while processed_video.state.name == "PROCESSING":
-                        time.sleep(1)
-                        processed_video = get_file(processed_video.name)
+            # Button to analyze the video
+            submit_button = st.form_submit_button("🔍 Analyze Video")
 
-                    # Prompt generation for video analysis
-                    analysis_prompt = f"Analyze the uploaded video for content and context. Respond to the following query using video insights: {user_query_video}"
+            if submit_button:
+                if not user_query_video:
+                    st.warning("Please enter a question or insight to analyze the video.")
+                else:
+                    try:
+                        with st.spinner("Processing video and gathering insights..."):
+                            # Process the video for analysis
+                            processed_video = upload_file(video_path)
+                            while processed_video.state.name == "PROCESSING":
+                                time.sleep(1)
+                                processed_video = get_file(processed_video.name)
 
-                    response = multimodal_Agent.run(analysis_prompt, videos=[processed_video])
+                            # Prompt generation for video analysis
+                            analysis_prompt = f"Analyze the uploaded video for content and context. Respond to the following query using video insights: {user_query_video}"
 
-                # Display the result
-                st.subheader("Analysis Result")
-                st.markdown(response.content)
+                            # Run the multimodal agent for analysis
+                            response = multimodal_Agent.run(analysis_prompt, videos=[processed_video])
 
-            except Exception as error:
-                st.error(f"An error occurred during analysis: {error}")
-            finally:
-                Path(video_path).unlink(missing_ok=True)
+                        # Display the result
+                        st.subheader("Analysis Result")
+                        st.markdown(response.content)
+
+                    except Exception as error:
+                        st.error(f"An error occurred during analysis: {error}")
+                    finally:
+                        Path(video_path).unlink(missing_ok=True)
